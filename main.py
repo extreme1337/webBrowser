@@ -56,6 +56,9 @@ class App(QFrame):
 
         # new tab button
         self.addTabButton = QPushButton("+")
+
+        self.addressBar.returnPressed.connect(self.browseTo)
+
         self.addTabButton.clicked.connect(self.addTab)
         self.toolBarLayout.addWidget(self.addTabButton)
 
@@ -72,8 +75,8 @@ class App(QFrame):
         self.tabbar.removeTab(i)
 
     def addTab(self):
-        i = self.tabCount
 
+        i = self.tabCount
         self.tabs.append(QWidget())
         self.tabs[i].layout = QVBoxLayout()
         self.tabs[i].setObjectName("tab" + str(i))
@@ -81,6 +84,8 @@ class App(QFrame):
         # open webview
         self.tabs[i].content = QWebEngineView()
         self.tabs[i].content.load(QUrl.fromUserInput("http://google.com"))
+
+        self.tabs[i].content.titleChanged.connect(lambda: self.setTabText(i))
 
         # add webview to tabs layout
         self.tabs[i].layout.addWidget(self.tabs[i].content)
@@ -94,14 +99,56 @@ class App(QFrame):
 
         # set the tab at top of screen
         self.tabbar.addTab("New Tab")
-        self.tabbar.setTabData(i, "tab" + str(i))
+        self.tabbar.setTabData(i, {"object": "tab" + str(i), "initial": i})
+
         self.tabbar.setCurrentIndex(i)
 
         self.tabCount += 1
 
-
     def switchTab(self, i):
-        self.container.layout.setCurretnWidget(self.tabs[i])
+        tab_data = self.tabbar.tabData(i)
+
+        tab_content = self.findChild(QWidget, tab_data)
+        self.container.layout.setCurretnWidget(tab_content)
+
+    def browseTo(self):
+        text = self.addressBar.text()
+
+        i = self.tabbar.currentIndex()
+        tab = self.tabbar.tabData(i)
+        web_view = self.findChild(QWidget, tab).content
+
+        if "http" not in text:
+            if "." not in text:
+                url = "https://www.google.com/#q=" + text
+            else:
+                url = "http://" + text
+        else:
+            url = text
+
+        web_view.load(QUrl.fromUserInput(url))
+
+    def setTabText(self, i):
+        """
+            self.tabs[i].objectName = tab1
+            self.tabbar.tabData(i)["object"] = tab1
+        """
+        tab_name = self.tabs[i].objectName()
+        # tab1
+        count = 0
+        running = True
+        while running:
+            tab_data_name = self.tabbar.tabData(count)
+
+            if count >= 99:
+                running = False
+
+            if tab_name == tab_data_name["object"]:
+                newTitle = self.findChild(QWidget, tab_name).content.title()
+                self.tabbar.setTabText(count, newTitle)
+                running = False
+            else:
+                count += 1
 
 
 if __name__ == '__main__':
