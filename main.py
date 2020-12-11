@@ -21,8 +21,8 @@ class App(QFrame):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Web Browser")
+        self.setMinimumSize(1366, 720)
         self.createApp()
-        self.setBaseSize(1366, 768)
 
     def createApp(self):
         self.layout = QVBoxLayout()
@@ -33,8 +33,8 @@ class App(QFrame):
         self.tabbar = QTabBar(movable=True, tabsClosable=True)
         self.tabbar.tabCloseRequested.connect(self.closeTab)
         self.tabbar.tabBarClicked.connect(self.switchTab)
-
         self.tabbar.setCurrentIndex(0)
+        self.tabbar.setDrawBase(False)
 
         # keep track of tabs
         self.tabCount = 0
@@ -79,13 +79,16 @@ class App(QFrame):
         i = self.tabCount
         self.tabs.append(QWidget())
         self.tabs[i].layout = QVBoxLayout()
+        self.tabs[i].layout.setContentsMargins(0, 0, 0, 0)
+
         self.tabs[i].setObjectName("tab" + str(i))
 
         # open webview
         self.tabs[i].content = QWebEngineView()
         self.tabs[i].content.load(QUrl.fromUserInput("http://google.com"))
 
-        self.tabs[i].content.titleChanged.connect(lambda: self.setTabText(i))
+        self.tabs[i].content.titleChanged.connect(lambda: self.setTabContent(i, "title"))
+        self.tabs[i].content.iconChanged.connect(lambda: self.setTabContent(i, "icon"))
 
         # add webview to tabs layout
         self.tabs[i].layout.addWidget(self.tabs[i].content)
@@ -106,16 +109,17 @@ class App(QFrame):
         self.tabCount += 1
 
     def switchTab(self, i):
-        tab_data = self.tabbar.tabData(i)
-
+        # Switch to tab. get current tabs tabData ("tab0") and find object
+        # with that name
+        tab_data = self.tabbar.tabData(i)["object"]
         tab_content = self.findChild(QWidget, tab_data)
-        self.container.layout.setCurretnWidget(tab_content)
+        self.container.layout.setCurrentWidget(tab_content)
 
     def browseTo(self):
         text = self.addressBar.text()
 
         i = self.tabbar.currentIndex()
-        tab = self.tabbar.tabData(i)
+        tab = self.tabbar.tabData(i)["object"]
         web_view = self.findChild(QWidget, tab).content
 
         if "http" not in text:
@@ -128,7 +132,7 @@ class App(QFrame):
 
         web_view.load(QUrl.fromUserInput(url))
 
-    def setTabText(self, i):
+    def setTabContent(self, i, type):
         """
             self.tabs[i].objectName = tab1
             self.tabbar.tabData(i)["object"] = tab1
@@ -144,8 +148,12 @@ class App(QFrame):
                 running = False
 
             if tab_name == tab_data_name["object"]:
-                newTitle = self.findChild(QWidget, tab_name).content.title()
-                self.tabbar.setTabText(count, newTitle)
+                if type == "title":
+                    newTitle = self.findChild(QWidget, tab_name).content.title()
+                    self.tabbar.setTabText(count, newTitle)
+                elif type == "icon":
+                    newIcon = self.findChild(QWidget, tab_name).content.icon()
+                    self.tabbar.setTabIcon(count, newIcon)
                 running = False
             else:
                 count += 1
