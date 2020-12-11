@@ -3,8 +3,8 @@ import os
 import json
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout,
                              QHBoxLayout, QPushButton, QLabel, QLineEdit,
-                             QTabBar, QFrame, QStackedLayout)
-from PyQt5.QtGui import QIcon, QWindow, QImage
+                             QTabBar, QFrame, QStackedLayout, QShortcut, QKeySequenceEdit, QSplitter)
+from PyQt5.QtGui import QIcon, QWindow, QImage, QKeySequence
 from PyQt5.QtCore import *
 from PyQt5.QtWebEngineWidgets import *
 
@@ -23,6 +23,7 @@ class App(QFrame):
         self.setWindowTitle("Web Browser")
         self.setMinimumSize(1366, 720)
         self.createApp()
+        self.setWindowIcon(QIcon("logo.png"))
 
     def createApp(self):
         self.layout = QVBoxLayout()
@@ -38,12 +39,20 @@ class App(QFrame):
         self.tabbar.setLayoutDirection(Qt.LeftToRight)
         self.tabbar.setElideMode(Qt.ElideLeft)
 
+        # shortcuts
+        self.shortcutNewTab = QShortcut(QKeySequence("Ctrl+T"), self)
+        self.shortcutNewTab.activated.connect(self.addTab)
+
+        self.shorcutReload = QShortcut(QKeySequence("Ctrl+R"), self)
+        self.shorcutReload.activated.connect(self.reloadPage)
+
         # keep track of tabs
         self.tabCount = 0
         self.tabs = []
 
         # create addressBar
         self.toolbar = QWidget()
+        self.toolbar.setObjectName("toolbar")
         self.toolbarLayout = QHBoxLayout()
         self.addressbar = AddressBar()
         self.addTabButton = QPushButton("+")
@@ -96,6 +105,7 @@ class App(QFrame):
         self.tabs[i].layout = QVBoxLayout()
         self.tabs[i].layout.setContentsMargins(0, 0, 0, 0)
 
+
         self.tabs[i].setObjectName("tab" + str(i))
 
         # open webview
@@ -107,7 +117,10 @@ class App(QFrame):
         self.tabs[i].content.urlChanged.connect(lambda: self.setTabContent(i, "url"))
 
         # add webview to tabs layout
-        self.tabs[i].layout.addWidget(self.tabs[i].content)
+        self.tabs[i].splitview = QSplitter()
+        self.tabs[i].layout.addWidget(self.tabs[i].splitview)
+
+        self.tabs[i].splitview.addWidget(self.tabs[i].content)
 
         # set top level tab from list to layout
         self.tabs[i].setLayout(self.tabs[i].layout)
@@ -209,4 +222,8 @@ class App(QFrame):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     window = App()
+
+    with open("style.css", "r") as style:
+        app.setStyleSheet(style.read())
+
     sys.exit(app.exec_())
